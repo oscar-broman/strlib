@@ -25,6 +25,9 @@ forward strgetfirstc(const string[]);
 forward strimplode(const glue[], output[], maxlength = sizeof(output), ...);
 forward strreplace(string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1, maxlength = sizeof(string));
 forward strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both);
+forward strcount(const string[], const sub[], bool:ignorecase = false);
+forward bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output));
+forward strtoliteral(output[], const input[], maxlength = sizeof(output));
 
 // Workaround for compiler bug
 forward _strlib_funcinc();
@@ -51,7 +54,7 @@ public _strlib_funcinc() {
 	(format(gs_Buffer, sizeof(gs_Buffer), %1), gs_Buffer)
 
 /*
- * Macro, quicker than the native version.
+ * Macro - quicker than the native version.
  *
  * Parameters:
  *   string[] - The string to check.
@@ -181,7 +184,7 @@ stock strimplode(const glue[], output[], maxlength = sizeof(output), ...) {
  */
 stock strexplode(output[][], const input[], const delimiter[] = !",", limit = cellmax, bool:trim = true, bool:ignorecase = false, size1 = sizeof(output), size2 = sizeof(output[])) {
 	if (!size1 || !size2) {
-		print(!"(strexplode) ERROR: size1 = %d, size2 = %d. Can't be 0.");
+		printf("(strexplode) ERROR: size1 = %d, size2 = %d. Can't be 0.", size1, size2);
 		
 		return 0;
 	}
@@ -219,10 +222,11 @@ stock strexplode(output[][], const input[], const delimiter[] = !",", limit = ce
 		return 0;
 	}
 	
-	if (limit == 0)
+	if (limit == 0) {
 		return 0;
-	else if (limit == cellmax)
+	} else if (limit == cellmax) {
 		limit = 0;
+	}
 	
 	new
 		     pos = 0,
@@ -230,15 +234,17 @@ stock strexplode(output[][], const input[], const delimiter[] = !",", limit = ce
 		bool:packed = ispacked(input),
 		     dlen = strlen(delimiter),
 		     count = 0,
-		     end;
+		     end
+	;
 	
 	while (pos != -1) {
 		++count;
 		
-		if (limit > 0 && count >= limit)
+		if (limit > 0 && count >= limit) {
 			next = -1;
-		else
+		} else {
 			next = strfind(input, delimiter, ignorecase, pos);
+		}
 		
 		end = (next == -1) ? cellmax : next;
 		
@@ -376,8 +382,9 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 			else
 				while (0 < string[i] <= ' ') i++;
 			
-			if (i)
+			if (i) {
 				strdel(string, 0, i);
+			}
 		}
 		
 		// Should the right side be trimmed?
@@ -399,36 +406,34 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 	} else {
 		// Should the left side be trimmed?
 		if (edges & trim_left) {
-			new i = 0;
-			new sub[2];
+			new i = 0, sub[2];
 			
 			if (packed) {
 				while ((sub[0] = string{i})) {
 					if (strfind(chars, sub) == -1)
 						break;
-					else
-						i++;
+					
+					i++;
 				}
 				
-				if (i)
+				if (i) {
 					strdel(string, 0, i);
+				}
 			} else {
 				while ((sub[0] = string[i])) {
 					if (strfind(chars, sub) == -1)
 						break;
-					else
-						i++;
+					
+					i++;
 				}
 				
-				if (i)
-					strdel(string, 0, i);
+				if (i) strdel(string, 0, i);
 			}
 		}
 		
 		// Should the right side be trimmed?
 		if (edges & trim_right) {
-			new i = strlen(string);
-			new sub[2];
+			new i = strlen(string), sub[2];
 			
 			if (i >= 0) {
 				if (packed) {
@@ -453,4 +458,198 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 			}
 		}
 	}
+}
+
+/*
+ * Count substrings.
+ *
+ * Parameters:
+ *   string[] - The string to search inside.
+ *   sub[] - The string to search for.
+ *   ignorecase - Whether the search should be case-insensitive.
+ *
+ * Returns:
+ *   The number of occurrences of "sub" in "string".
+ */
+stock strcount(const string[], const sub[], bool:ignorecase = false) {
+	new pos = 0, count = 0;
+	
+	while (-1 != (pos = strfind(string, sub, ignorecase, pos)))
+		count++;
+	
+	return count;
+}
+
+/*
+ * Read a string from a PAWN string literal.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The string literal.
+ *   pos - The position in "input" to start reading from. Will be modified to the end of the literal.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   true on success, false on error.
+ */
+stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output)) {
+	new
+		bool:packed = (input[0] > 255),
+		     length = strlen(input),
+			 c,
+			 outlen = 0
+	;
+
+	output[0] = '\0';
+
+	// No need to do anything else.
+	if (!length)
+		return true;
+	
+	if (input[0] == '"')
+		pos++;
+
+	for (;; pos++) {
+		if (outlen >= maxlength - 1)
+			break;
+		
+		c = input[pos];
+		
+		switch (c) {
+			// String ended
+			case '"': break;
+			case '\\': {}
+			default: {
+				output[outlen++] = c;
+
+				continue;
+			}
+		}
+
+		// String ends with a backslash - invalid.
+		if (pos == length - 1)
+			return false;
+
+		// We're after a backslash now, let's see what's there.
+		c = input[++pos];
+
+		switch (c) {
+			case '"',
+			    '\'',
+			    '\\',
+			     '%': output[outlen++] = c;
+			case 'a': output[outlen++] = '\a';
+			case 'b': output[outlen++] = '\b';
+			case 'e': output[outlen++] = '\e';
+			case 'f': output[outlen++] = '\f';
+			case 'r': output[outlen++] = '\r';
+			case 'n': output[outlen++] = '\n';
+			case 't': output[outlen++] = '\t';
+			case 'v': output[outlen++] = '\v';
+			
+			case 'x': {
+				new val = 0;
+
+				// String ends with "\x" - invalid.
+				if (c == length - 1)
+					return false;
+
+				while ((c = input[pos + 1])) {
+					if ('a' <= c <= 'f' || 'A' <= c <= 'F') {
+						val = (val << 4) + (tolower(c) - 'a' + 10);
+					} else if ('0' <= c <= '9') {
+						val = (val << 4) + (c - '0');
+					} else {
+						break;
+					}
+
+					pos++;
+				}
+
+				if (c == ';')
+					pos++;
+
+				output[outlen++] = val;
+			}
+			
+			case '0' .. '9': {
+				new val = 0;
+
+				while ((c = input[pos])) {
+					if ('0' <= c <= '9') {
+						val = val * 10 + (c - '0');
+					} else {
+						break;
+					}
+
+					pos++;
+				}
+
+				if (c != ';') pos--;
+
+				output[outlen++] = val;
+			}
+			default: {
+				return false;
+			}
+		}
+	}
+
+	output[outlen] = '\0';
+	
+	pos++;
+
+	return true;
+}
+
+/*
+ * Build a PAWN string literal from a given string.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   substrings[] - The string to build from.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   Nothing
+ */
+stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
+	new i, c, outlen;
+
+	output[outlen++] = '"';
+
+	for (i = 0; (c = input[i]); i++) {
+		if (maxlength - outlen <= 3) {
+			outlen = min(outlen, maxlength - 2);
+			
+			break;
+		}
+		
+		switch (c) {
+			case ' ', '!', '#' .. '[', ']', '^' .. '~':
+				output[outlen++] = c;
+
+			case  '"': strcat(output, !"\\\"", outlen + 3), outlen += 2;
+			case '\a': strcat(output, !"\\a" , outlen + 3), outlen += 2;
+			case '\b': strcat(output, !"\\b" , outlen + 3), outlen += 2;
+			case '\e': strcat(output, !"\\e" , outlen + 3), outlen += 2;
+			case '\f': strcat(output, !"\\f" , outlen + 3), outlen += 2;
+			case '\r': strcat(output, !"\\r" , outlen + 3), outlen += 2;
+			case '\n': strcat(output, !"\\n" , outlen + 3), outlen += 2;
+			case '\t': strcat(output, !"\\t" , outlen + 3), outlen += 2;
+			case '\v': strcat(output, !"\\v" , outlen + 3), outlen += 2;
+
+			default: {
+				if (maxlength - outlen <= 8)
+					break;
+				
+				format(output[outlen], 7, "\\x%03x;", c);
+
+				outlen += 6;
+			}
+		}
+	}
+
+	output[outlen++] = '"';
+	output[outlen] = '\0';
 }
