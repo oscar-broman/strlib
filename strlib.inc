@@ -13,7 +13,7 @@ enum trim_edges {
 
 stock
 	// Used throughout the library
-	gs_Buffer[2048]
+	g_StrlibBuffer[2048]
 ;
 
 // Forward-declarations
@@ -51,7 +51,7 @@ public _strlib_funcinc() {
  *   Can only be used once in the same function call.
  */
 #define sprintf(%1) \
-	(format(gs_Buffer, sizeof(gs_Buffer), %1), gs_Buffer)
+	(format(g_StrlibBuffer, sizeof(g_StrlibBuffer), %1), g_StrlibBuffer)
 
 /*
  * Macro - quicker than the native version.
