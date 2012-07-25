@@ -28,6 +28,8 @@ forward strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both);
 forward strcount(const string[], const sub[], bool:ignorecase = false);
 forward bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output));
 forward strtoliteral(output[], const input[], maxlength = sizeof(output));
+forward strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output));
+forward strtobin(output[], const input[], maxlength = sizeof(output));
 
 // Workaround for compiler bug
 forward _strlib_funcinc();
@@ -652,4 +654,87 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 
 	output[outlen++] = '"';
 	output[outlen] = '\0';
+}
+
+/*
+ * Convert an array to a string.
+ *
+ * Example: {0x1122, 0x5566} becomes "0000112200005566".
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The array to build from.
+ *   inputlength - The size of "input". Defaults to sizeof(input).
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   Nothing
+ */
+stock strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output)) {
+	static const hex_chars[] = "0123456789ABCDEF";
+	new outlen = 0;
+	
+	for (new i = 0; i < inputlength; i++) {
+		if (maxlength - outlen <= 7) {
+			outlen = min(outlen, maxlength - 1);
+			
+			break;
+		}
+		
+		new input_cell = input[i];
+		
+		output[outlen++] = hex_chars[(input_cell             ) >>> 28];
+		output[outlen++] = hex_chars[(input_cell & 0x0F000000) >>> 24];
+		output[outlen++] = hex_chars[(input_cell & 0x00F00000) >>> 20];
+		output[outlen++] = hex_chars[(input_cell & 0x000F0000) >>> 16];
+		output[outlen++] = hex_chars[(input_cell & 0x0000F000) >>> 12];
+		output[outlen++] = hex_chars[(input_cell & 0x00000F00) >>>  8];
+		output[outlen++] = hex_chars[(input_cell & 0x000000F0) >>>  4];
+		output[outlen++] = hex_chars[(input_cell & 0x0000000F)       ];
+	}
+	
+	output[outlen] = '\0';
+}
+
+/*
+ * Convert a string to an array.
+ *
+ * Example: "0000112200005566" becomes {0x1122, 0x5566}.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The array to build from.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   The length of the output, in cells.
+ */
+stock strtobin(output[], const input[], maxlength = sizeof(output)) {
+	new len = strlen(input), outlen = 0;
+	
+	for (new i = 0; i < len;) {
+		if (outlen >= maxlength || i > len - 8) {
+			break;
+		}
+		
+		new c, out = 0;
+		
+		#define ADD_OUT(%1) \
+			c = input[i++]; out |= (('a' <= c <= 'f' || 'A' <= c <= 'F') ? (tolower(c) - 'a' + 10) : (c - '0')) << %1
+		
+		ADD_OUT(28);
+		ADD_OUT(24);
+		ADD_OUT(20);
+		ADD_OUT(16);
+		ADD_OUT(12);
+		ADD_OUT(8);
+		ADD_OUT(4);
+		ADD_OUT(0);
+		
+		#undef ADD_OUT
+		
+		output[outlen++] = out;
+	}
+	
+	return outlen;
 }
