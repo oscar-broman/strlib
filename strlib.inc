@@ -4,40 +4,12 @@
 	#define STRLIB_BUFFER_SIZE  2048
 #endif
 
-// Used in strtrim()
+// Used in strtrim
 enum trim_edges {
 	trim_left  = 1,
 	trim_right = 2,
 	trim_both = trim_left | trim_right
 };
-
-stock
-	// Used throughout the library
-	g_StrlibBuffer[2048]
-;
-
-// Forward-declarations
-forward bool:isequal(const str1[], const str2[], bool:ignorecase = false);
-forward bool:isempty(const string[]);
-forward strexplode(output[][], const input[], const delimiter[] = !",", limit = cellmax, bool:trim = true, bool:ignorecase = false, size1 = sizeof(output), size2 = sizeof(output[]));
-forward strgetc(const string[], index);
-forward strgetfirstc(const string[]);
-forward strimplode(const glue[], output[], maxlength = sizeof(output), ...);
-forward strreplace(string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1, maxlength = sizeof(string));
-forward strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both);
-forward strcount(const string[], const sub[], bool:ignorecase = false);
-forward bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output));
-forward strtoliteral(output[], const input[], maxlength = sizeof(output));
-forward strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output));
-forward strtobin(output[], const input[], maxlength = sizeof(output));
-
-// Workaround for compiler bug
-forward _strlib_funcinc();
-public _strlib_funcinc() {
-	new temp[1];
-	
-	strcat(temp, temp);
-}
 
 /*
  * Returns a formatted string.
@@ -52,20 +24,7 @@ public _strlib_funcinc() {
  * Limitations:
  *   Can only be used once in the same function call.
  */
-#define sprintf(%1) \
-	(format(g_StrlibBuffer, sizeof(g_StrlibBuffer), %1), g_StrlibBuffer)
-
-/*
- * Macro - quicker than the native version.
- *
- * Parameters:
- *   string[] - The string to check.
- *
- * Returns:
- *   True if packed, false if empty or not packed.
- */
-#define ispacked(%1) \
-	((%1)[0] > 255)
+forward sprintf(const format[], {Float, _}:...);
 
 /*
  * Get the first character of a string
@@ -76,8 +35,7 @@ public _strlib_funcinc() {
  * Returns:
  *   The first character of the string.
  */
-stock strgetfirstc(const string[])
-	return ispacked(string) ? string{0} : string[0];
+forward strgetfirstc(const string[]);
 
 /*
  * Get a character from a specific index in a string.
@@ -89,17 +47,7 @@ stock strgetfirstc(const string[])
  * Returns:
  *   The character at that index, or '\0' if out of range.
  */
-stock strgetc(const string[], index) {
-	if (index < 0)
-		return '\0';
-	
-	new len = strlen(string);
-	
-	if (index >= len)
-		return '\0';
-	
-	return ispacked(string) ? string{index} : string[index];
-}
+forward strgetc(const string[], index);
 
 /*
  * Find out if a string is empty.
@@ -110,12 +58,38 @@ stock strgetc(const string[], index) {
  * Returns:
  *   True if empty, otherwise false.
  */
-stock bool:isempty(const string[]) {
-	if (ispacked(string))
-		return string{0} == '\0';
-	else
-		return string[0] == '\0';
-}
+forward bool:isempty(const string[]);
+
+/*
+ * Compare two strings.
+ *
+ * Parameters:
+ *   str1[] - The first string.
+ *   str2[] - The second string.
+ *   ignorecase - Whether to compare them in a case-insensitive manner.
+ *
+ * Returns:
+ *   True if equal, otherwise false.
+ */
+forward bool:isequal(const str1[], const str2[], bool:ignorecase = false);
+
+/*
+ * Split a string by a given delimiter.
+ * 
+ * Parameters:
+ *   output[][] - A multi-dimensional array that will be filled with substrings.
+ *   input[] - The input string to split.
+ *   delimiter[] - The delimiter to split by. Defaults to ",".
+ *   limit - The max. no. substrings.
+ *   trim - Whether to trim the substrings from whitespace. Defaults to true.
+ *   ignorecase - Whether the search for "delimiter" should be case-insensitive.
+ *   size1 - The size of the 1st dimension of output (otput[this][]). Defaults to sizeof(output).
+ *   size2 - The size of the 2nd dimension of output (otput[][this]). Defaults to sizeof(output[]).
+ *
+ * Returns:
+ *   The number of substrings that were copied into the array.
+ */
+forward strexplode(output[][], const input[], const delimiter[] = !",", limit = cellmax, bool:trim = true, bool:ignorecase = false, size1 = sizeof(output), size2 = sizeof(output[]));
 
 /*
  * Glue together strings into one.
@@ -129,6 +103,168 @@ stock bool:isempty(const string[]) {
  * Returns:
  *   Nothing
  */
+forward strimplode(const glue[], output[], maxlength = sizeof(output), ...);
+
+/*
+ * Replace occurrences of the search string with the replacement string.
+ *
+ * Parameters:
+ *   string[] - The string to perform the replacing in.
+ *   search[] - The string to look for.
+ *   replacement[] - The string to put instead of "search".
+ *   ignorecase - Whether the search for "search" should be case-insensitive. Defaults to false.
+ *   pos - The position to start at. Defaults to 0 (the beginning).
+ *   limit - Limit the number of replacements. Defaults to -1 (no limit).
+ *   maxlength - The size of "string". Defaults to sizeof(string).
+ *
+ * Returns:
+ *   The number of replacements that were made.
+ */
+forward strreplace(string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1, maxlength = sizeof(string));
+
+/*
+ * Trim whitespace or a specific group of characters from a string.
+ *
+ * Parameters:
+ *   string[] - The string to trim.
+ *   chars[] - A string with characters to trim, or all whitespace if empty. Default is all whitespace.
+ *   trim_edges - Which edge to trim (trim_left/trim_right/trim_both). Default is trim_both.
+ *
+ * Returns:
+ *   Nothing
+ */
+forward strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both);
+
+/*
+ * Count substrings.
+ *
+ * Parameters:
+ *   string[] - The string to search inside.
+ *   sub[] - The string to search for.
+ *   ignorecase - Whether the search should be case-insensitive.
+ *
+ * Returns:
+ *   The number of occurrences of "sub" in "string".
+ */
+forward strcount(const string[], const sub[], bool:ignorecase = false);
+
+/*
+ * Read a string from a PAWN string literal.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The string literal.
+ *   pos - The position in "input" to start reading from. Will be modified to the end of the literal.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   true on success, false on error.
+ */
+forward bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output));
+
+/*
+ * Build a PAWN string literal from a given string.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   substrings[] - The string to build from.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   Nothing
+ */
+forward strtoliteral(output[], const input[], maxlength = sizeof(output));
+
+/*
+ * Convert an array to a string.
+ *
+ * Example: {0x1122, 0x5566} becomes "0000112200005566".
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The array to build from.
+ *   inputlength - The size of "input". Defaults to sizeof(input).
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   Nothing
+ */
+forward strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output));
+
+/*
+ * Convert a string to an array.
+ *
+ * Example: "0000112200005566" becomes {0x1122, 0x5566}.
+ *
+ * Parameters:
+ *   output[] - The variable to save into.
+ *   input[] - The array to build from.
+ *   maxlength - The size of "output". Defaults to sizeof(output).
+ *
+ * Returns:
+ *   The length of the output, in cells.
+ */
+forward strtobin(output[], const input[], maxlength = sizeof(output));
+
+
+
+
+
+
+stock
+	// Used throughout the library
+	g_StrlibBuffer[2048]
+;
+
+// Workaround for compiler bug
+forward _strlib_funcinc();
+public _strlib_funcinc() {
+	new temp[1];
+	
+	strcat(temp, temp);
+}
+
+#define sprintf(%1) \
+	(format(g_StrlibBuffer, sizeof(g_StrlibBuffer), %1), g_StrlibBuffer)
+
+#define ispacked(%1) \
+	((%1)[0] > 255)
+
+stock strgetfirstc(const string[]) {
+	return ispacked(string) ? string{0} : string[0];
+}
+
+stock strgetc(const string[], index) {
+	if (index < 0)
+		return '\0';
+	
+	new len = strlen(string);
+	
+	if (index >= len)
+		return '\0';
+	
+	return ispacked(string) ? string{index} : string[index];
+}
+
+stock bool:isempty(const string[]) {
+	if (ispacked(string))
+		return string{0} == '\0';
+	else
+		return string[0] == '\0';
+}
+
+stock bool:isequal(const str1[], const str2[], bool:ignorecase = false) {
+    new
+        c1 = (str1[0] > 255) ? str1{0} : str1[0],
+        c2 = (str2[0] > 255) ? str2{0} : str2[0]
+    ;
+
+    if (!c1 != !c2)
+        return false;
+
+    return !strcmp(str1, str2, ignorecase);
+}
+
 stock strimplode(const glue[], output[], maxlength = sizeof(output), ...) {
 	new args = numargs();
 	
@@ -168,22 +304,6 @@ stock strimplode(const glue[], output[], maxlength = sizeof(output), ...) {
 	}
 }
 
-/*
- * Split a string by a given delimiter.
- * 
- * Parameters:
- *   output[][] - A multi-dimensional array that will be filled with substrings.
- *   input[] - The input string to split.
- *   delimiter[] - The delimiter to split by. Defaults to ",".
- *   limit - The max. no. substrings.
- *   trim - Whether to trim the substrings from whitespace. Defaults to true.
- *   ignorecase - Whether the search for "delimiter" should be case-insensitive.
- *   size1 - The size of the 1st dimension of output (otput[this][]). Defaults to sizeof(output).
- *   size2 - The size of the 2nd dimension of output (otput[][this]). Defaults to sizeof(output[]).
- *
- * Returns:
- *   The number of substrings that were copied into the array.
- */
 stock strexplode(output[][], const input[], const delimiter[] = !",", limit = cellmax, bool:trim = true, bool:ignorecase = false, size1 = sizeof(output), size2 = sizeof(output[])) {
 	if (!size1 || !size2) {
 		printf("(strexplode) ERROR: size1 = %d, size2 = %d. Can't be 0.", size1, size2);
@@ -274,21 +394,6 @@ stock strexplode(output[][], const input[], const delimiter[] = !",", limit = ce
 	return count;
 }
 
-/*
- * Replace occurrences of the search string with the replacement string.
- *
- * Parameters:
- *   string[] - The string to perform the replacing in.
- *   search[] - The string to look for.
- *   replacement[] - The string to put instead of "search".
- *   ignorecase - Whether the search for "search" should be case-insensitive. Defaults to false.
- *   pos - The position to start at. Defaults to 0 (the beginning).
- *   limit - Limit the number of replacements. Defaults to -1 (no limit).
- *   maxlength - The size of "string". Defaults to sizeof(string).
- *
- * Returns:
- *   The number of replacements that were made.
- */
 stock strreplace(string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1, maxlength = sizeof(string)) {
     // No need to do anything if the limit is 0.
     if (limit == 0)
@@ -336,40 +441,6 @@ stock strreplace(string[], const search[], const replacement[], bool:ignorecase 
     return count;
 }
 
-/*
- * Compare two strings.
- *
- * Parameters:
- *   str1[] - The first string.
- *   str2[] - The second string.
- *   ignorecase - Whether to compare them in a case-insensitive manner.
- *
- * Returns:
- *   True if equal, otherwise false.
- */
-stock bool:isequal(const str1[], const str2[], bool:ignorecase = false) {
-    new
-        c1 = (str1[0] > 255) ? str1{0} : str1[0],
-        c2 = (str2[0] > 255) ? str2{0} : str2[0]
-    ;
-    
-    if (!c1 != !c2)
-        return false;
-    
-    return !strcmp(str1, str2, ignorecase);
-}
-
-/*
- * Trim whitespace or a specific group of characters from a string.
- *
- * Parameters:
- *   string[] - The string to trim.
- *   chars[] - A string with characters to trim, or all whitespace if empty. Default is all whitespace.
- *   trim_edges - Which edge to trim (trim_left/trim_right/trim_both). Default is trim_both.
- *
- * Returns:
- *   Nothing
- */
 stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 	new bool:packed = ispacked(string);
 	
@@ -462,17 +533,6 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 	}
 }
 
-/*
- * Count substrings.
- *
- * Parameters:
- *   string[] - The string to search inside.
- *   sub[] - The string to search for.
- *   ignorecase - Whether the search should be case-insensitive.
- *
- * Returns:
- *   The number of occurrences of "sub" in "string".
- */
 stock strcount(const string[], const sub[], bool:ignorecase = false) {
 	new pos = 0, count = 0;
 	
@@ -482,18 +542,6 @@ stock strcount(const string[], const sub[], bool:ignorecase = false) {
 	return count;
 }
 
-/*
- * Read a string from a PAWN string literal.
- *
- * Parameters:
- *   output[] - The variable to save into.
- *   input[] - The string literal.
- *   pos - The position in "input" to start reading from. Will be modified to the end of the literal.
- *   maxlength - The size of "output". Defaults to sizeof(output).
- *
- * Returns:
- *   true on success, false on error.
- */
 stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output)) {
 	new
 		bool:packed = (input[0] > 255),
@@ -604,17 +652,6 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 	return true;
 }
 
-/*
- * Build a PAWN string literal from a given string.
- *
- * Parameters:
- *   output[] - The variable to save into.
- *   substrings[] - The string to build from.
- *   maxlength - The size of "output". Defaults to sizeof(output).
- *
- * Returns:
- *   Nothing
- */
 stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 	new i, c, outlen;
 
@@ -656,20 +693,6 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 	output[outlen] = '\0';
 }
 
-/*
- * Convert an array to a string.
- *
- * Example: {0x1122, 0x5566} becomes "0000112200005566".
- *
- * Parameters:
- *   output[] - The variable to save into.
- *   input[] - The array to build from.
- *   inputlength - The size of "input". Defaults to sizeof(input).
- *   maxlength - The size of "output". Defaults to sizeof(output).
- *
- * Returns:
- *   Nothing
- */
 stock strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output)) {
 	static const hex_chars[] = "0123456789ABCDEF";
 	new outlen = 0;
@@ -696,19 +719,6 @@ stock strfrombin(output[], const input[], inputlength = sizeof(input), maxlength
 	output[outlen] = '\0';
 }
 
-/*
- * Convert a string to an array.
- *
- * Example: "0000112200005566" becomes {0x1122, 0x5566}.
- *
- * Parameters:
- *   output[] - The variable to save into.
- *   input[] - The array to build from.
- *   maxlength - The size of "output". Defaults to sizeof(output).
- *
- * Returns:
- *   The length of the output, in cells.
- */
 stock strtobin(output[], const input[], maxlength = sizeof(output)) {
 	new len = strlen(input), outlen = 0;
 	
