@@ -206,10 +206,38 @@ forward strfrombin(output[], const input[], inputlength = sizeof(input), maxleng
  */
 forward strtobin(output[], const input[], maxlength = sizeof(output));
 
+/*
+ * Concatenate one string with a part of another.
+ *
+ * Parameters:
+ *   dest[] - The variable to concatenate the other part with.
+ *   source[] - The string to extract from.
+ *   start - The start offset, defaults to 0.
+ *   end - The start offset, defaults to end of string.
+ *   maxlength - The size of "dest". Defaults to sizeof(dest).
+ */
+forward strcatmid(dest[], const source[], start = 0, end = -1, maxlength = sizeof(dest));
 
+/*
+ * Decode an encoded URL.
+ *
+ * Parameters:
+ *   output[] - The output variable.
+ *   input[] - The string to decode.
+ *   maxlength - The size of "output". Defaults to sizeof(output). 
+ */
+forward strurldecode(output[], const input[], maxlength = sizeof(output));
 
-
-
+/*
+ * URL encode a string.
+ *
+ * Parameters:
+ *   output[] - The output variable.
+ *   input[] - The string to encode.
+ *   maxlength - The size of "output". Defaults to sizeof(output). 
+ *   pack - Whether to pack the output. Defaults to false.
+ */
+forward strurlencode(output[], const input[], maxlength = sizeof(output), bool:pack = false);
 
 stock
 	// Used throughout the library
@@ -747,4 +775,126 @@ stock strtobin(output[], const input[], maxlength = sizeof(output)) {
 	}
 	
 	return outlen;
+}
+
+stock strurlencode(output[], const input[], maxlength = sizeof(output), bool:pack = false) {
+	static const hex_chars[] = "0123456789ABCDEF";
+	
+	new
+		     len = strlen(input),
+		bool:packed = ispacked(input),
+		     outlen = 0
+	;
+	
+	if (pack)
+		maxlength *= 4;
+	
+	for (new i = 0; i < len; i++) {	
+		if (maxlength - outlen <= 1)
+			break;
+		
+		new c = packed ? input{i} : input[i];
+		
+		switch (c) {
+			case 'a' .. 'z', 'A' .. 'Z', '0' .. '9', '_': {
+				if (pack)
+					output{outlen++} = c;
+				else
+					output[outlen++] = c;
+			}
+			
+			case ' ': {
+				if (pack)
+					output{outlen++} = '+';
+				else
+					output[outlen++] = '+';
+			}
+			
+			default: {
+				if (maxlength - outlen <= 3)
+					break;
+				
+				if (pack) {
+					output{outlen++} = '%';
+					output{outlen++} = hex_chars[(c & 0xF0) >>> 4];
+					output{outlen++} = hex_chars[c & 0x0F];
+				} else {
+					output[outlen++] = '%';
+					output[outlen++] = hex_chars[(c & 0xF0) >>> 4];
+					output[outlen++] = hex_chars[c & 0x0F];
+				}
+			}
+		}
+	}
+	
+	if (pack)
+		output{outlen} = '\0';
+	else
+		output[outlen] = '\0';
+}
+
+stock strurldecode(output[], const input[], maxlength = sizeof(output)) {
+	new prev_pos = 0, pos = 0, inputlen = strlen(input), len;
+	
+	output[0] = '\0';
+	
+	while (-1 != (pos = strfind(input, "%", _, pos))) {
+		static str[2];
+		new c;
+		
+		if (prev_pos != pos) {
+			len = strlen(output);
+			
+			strcatmid(output, input, prev_pos, pos, maxlength);
+			strreplace(output, "+", " ", _, len, _, maxlength);
+		}
+		
+		if (inputlen < pos + 3)
+			return;
+		
+		str[0] = 0;
+		
+		c = input[pos + 1]; str[0] |= (('a' <= c <= 'f' || 'A' <= c <= 'F') ? (tolower(c) - 'a' + 10) : (c - '0')) << 4;
+		c = input[pos + 2]; str[0] |= (('a' <= c <= 'f' || 'A' <= c <= 'F') ? (tolower(c) - 'a' + 10) : (c - '0'));
+		
+		strcat(output, str, maxlength);
+		
+		prev_pos = (pos += 3);
+	}
+	
+	len = strlen(output);
+	
+	strcatmid(output, input, prev_pos, _, maxlength);
+	strreplace(output, "+", " ", _, len, _, maxlength);
+}
+
+stock strcatmid(dest[], const source[], start = 0, end = -1, maxlength = sizeof(dest)) {
+	if (start == 0 && end == -1) {
+		strcat(dest, source, maxlength);
+	} else {
+		if (end == -1)
+			end = strlen(source);
+		
+		if (ispacked(dest)) {
+			new len = strlen(dest);
+			
+			if (ispacked(source)) {
+				strunpack(g_StrlibBuffer, source);
+			
+				strcat(dest, g_StrlibBuffer[start], min(maxlength, (len + end - start) / 4 + 1));
+			} else {	
+				strcat(dest, source[start], min(maxlength, (len + end - start) / 4 + 1));
+			}
+			
+			dest{len + end - start} = '\0';
+		} else {
+			if (ispacked(source)) {
+				strunpack(g_StrlibBuffer, source);
+			
+				strcat(dest, g_StrlibBuffer[start], min(maxlength, strlen(dest) + end - start + 1));
+			} else {	
+				strcat(dest, source[start], min(maxlength, strlen(dest) + end - start + 1));
+			}
+		}
+	}
 }
