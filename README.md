@@ -18,6 +18,33 @@ String functions for SA-MP PAWN scripting.
 * `strtoliteral` - Build a PAWN string literal from a given string.
 * `strfrombin` - Convert an array to a string.
 * `strtobin` - Convert a string to an array.
+* `strcatmid` - Concatenate a part of another string.
+* `strurlencode` - URL encode a string.
+* `strurldecode` - Decode an encoded URL.
+
+## Output as return value
+
+All of the functions above require one argument to be the output variable - the functions listed below does not.
+
+Note, however, the max size of returned strings is `STRLIB_RETURN_SIZE` (default 256). Using large sizes will add lots of heap usage.
+
+* `ret_strcatmid(string[], source[], start = 0, end = -1)`
+* `ret_strfrombin(input[], inputlength = sizeof(input))`
+* `ret_strimplode(glue[], ...)`
+* `ret_strreplace(string[], search[], replacement[], ignorecase = false, pos = 0, limit = -1)`
+* `ret_strfromliteral(input[], &pos = 0)`
+* `ret_strtoliteral(input[])`
+* `ret_strtrim(string[], chars[] = "", trim_edges:edges = trim_both)`
+* `ret_strurldecode(input[])`
+* `ret_strurlencode(input[], pack = false)`
+* `ret_strpack(source[])`
+* `ret_strunpack(source[])`
+* `ret_strcat(string1[], string2[])`
+* `ret_strmid(source[], start, end)`
+* `ret_strins(string[], substr[], pos)`
+* `ret_strdel(string[], start, end)`
+* `ret_valstr(value, pack = false)`
+* `ret_GetPlayerName(playerid, pack = false)`
 
 # Examples
 
