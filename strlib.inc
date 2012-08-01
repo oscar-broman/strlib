@@ -4,6 +4,10 @@
 	#define STRLIB_BUFFER_SIZE  2048
 #endif
 
+#if !defined STRLIB_RETURN_SIZE
+	#define STRLIB_RETURN_SIZE  256
+#endif
+
 // Used in strtrim
 enum trim_edges {
 	trim_left  = 1,
@@ -249,6 +253,29 @@ forward strurldecode(output[], const input[], maxlength = sizeof(output));
  *   pack - Whether to pack the output. Defaults to false.
  */
 forward strurlencode(output[], const input[], maxlength = sizeof(output), bool:pack = false);
+
+// Same as above, but output is returned
+forward ret_strcatmid(const string[], const source[], start = 0, end = -1);
+forward ret_strfrombin(const input[], inputlength = sizeof(input));
+forward ret_strimplode(const glue[], ...);
+forward ret_strreplace(const string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1);
+forward ret_strfromliteral(const input[], &pos = 0);
+forward ret_strtoliteral(const input[]);
+forward ret_strtrim(const string[], const chars[] = !"", trim_edges:edges = trim_both);
+forward ret_strurldecode(const input[]);
+forward ret_strurlencode(const input[], bool:pack = false);
+
+// Return from native functions
+forward ret_strpack(const source[]);
+forward ret_strunpack(const source[]);
+forward ret_strcat(const string1[], const string2[]);
+forward ret_strmid(const source[], start, end);
+forward ret_strins(const string[], const substr[], pos, maxlength = sizeof(string));
+forward ret_strdel(const string[], start, end);
+forward ret_valstr(value, bool:pack = false);
+
+forward ret_GetPlayerName(playerid, bool:pack = false);
+
 
 stock
 	// Used throughout the library
@@ -1087,4 +1114,205 @@ stock strcatmid(dest[], const source[], start = 0, end = -1, maxlength = sizeof(
 	
 	if (heap)
 		RestoreHeapToAddress(heap);
+}
+
+
+stock ret_strcatmid(const string[], const source[], start = 0, end = -1) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	
+	strcatmid(output, source, start, end);
+	
+	return output;
+}
+
+stock ret_strfrombin(const input[], inputlength = sizeof(input)) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strfrombin(output, input, inputlength);
+	
+	return output;
+}
+
+stock ret_strimplode(const glue[], ...) {
+	new output[STRLIB_RETURN_SIZE];
+	const maxlength = sizeof(output);
+	new args = numargs();
+	
+	// Loop the variable arguments (the ones after "maxlength").
+	for (new arg = 1; arg < args; arg++) {
+		// If this isn't the first string, append the glue.
+		if (arg != 1)
+			strcat(output, glue, maxlength);
+		
+		// Wrap these in braces or they will be a part of the above if statement (compiler bug)
+		{
+			// Get the address of argument no. <arg>
+			#emit LCTRL       5
+			#emit ADD.C       12
+			#emit LOAD.S.alt  arg
+			#emit SHL.C.alt   2
+			#emit ADD
+			#emit LOAD.I
+			
+			// Push the maxlength, arg address, and output address
+			#emit PUSH.C      maxlength
+			#emit PUSH.pri
+			#emit PUSH.ADR    output
+			
+			// Push the argument count
+			#emit PUSH.C      12
+			
+			// call strcat
+			#emit SYSREQ.C    strcat
+			
+			// Restore the stack
+			#emit STACK       16
+		}
+	}
+	
+	// Fix compiler bug (returning strings in variadic functions)
+	#emit LOAD.S.pri  8
+	#emit ADD.C       12
+	#emit MOVE.alt
+	#emit LCTRL       5
+	#emit ADD
+	#emit LOAD.I
+	#emit STOR.S.pri  20
+	
+	return output;
+}
+
+stock ret_strreplace(const string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	
+	strreplace(output, search, replacement, ignorecase, pos, limit);
+	
+	return output;
+}
+
+stock ret_strfromliteral(const input[], &pos = 0) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, input);
+	
+	strfromliteral(output, input, pos);
+	
+	return output;
+}
+
+stock ret_strtoliteral(const input[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, input);
+	
+	strtoliteral(output, input);
+	
+	return output;
+}
+
+stock ret_strtrim(const string[], const chars[] = !"", trim_edges:edges = trim_both) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	
+	strtrim(output, chars, edges);
+	
+	return output;
+}
+
+stock ret_strurldecode(const input[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, input);
+	
+	strurldecode(output, input);
+	
+	return output;
+}
+
+stock ret_strurlencode(const input[], bool:pack = false) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, input);
+	
+	strurlencode(output, input, _, pack);
+	
+	return output;
+}
+
+stock ret_strpack(const source[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strpack(output, source);
+	
+	return output;
+}
+
+stock ret_strunpack(const source[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strunpack(output, source);
+	
+	return output;
+}
+
+stock ret_strcat(const string1[], const string2[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string1);
+	strcat(output, string2);
+	
+	return output;
+}
+
+stock ret_strmid(const source[], start, end) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strmid(output, source, start, end);
+	
+	return output;
+}
+
+stock ret_strins(const string[], const substr[], pos, maxlength = sizeof(string)) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	strins(output, substr, pos);
+	
+	return output;
+}
+
+stock ret_strdel(const string[], start, end) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	strdel(output, start, end);
+	
+	return output;
+}
+
+stock ret_valstr(value, bool:pack = false) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	format(output, sizeof(output), "%d", value);
+	
+	if (pack)
+		strpack(output, output);
+	
+	return output;
+}
+
+stock ret_GetPlayerName(playerid, bool:pack = false) {
+	new output[MAX_PLAYER_NAME];
+	
+	GetPlayerName(playerid, output, sizeof(output));
+	
+	if (pack)
+		strpack(output, output);
+	
+	return output;
 }
