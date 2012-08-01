@@ -50,6 +50,17 @@ forward strgetfirstc(const string[]);
 forward strgetc(const string[], index);
 
 /*
+ * Get the size of a string.
+ *
+ * Parameters:
+ *   string[] - The string.
+ *
+ * Returns:
+ *   The size of the string, in bytes.
+ */
+forward strsize(const string[]);
+
+/*
  * Find out if a string is empty.
  *
  * Parameters:
@@ -250,8 +261,124 @@ public _strlib_funcinc() {
 	new temp[1];
 	
 	strcat(temp, temp);
+	strpack(temp, temp);
+	strunpack(temp, temp);
 }
 
+// Internal functions
+static stock RedirectArgument(arg, ...) {
+	#emit LOAD.S.pri  0
+	#emit ADD.C       12
+	#emit LOAD.S.alt  arg
+	#emit SHL.C.alt   2
+	#emit ADD
+	#emit MOVE.alt
+	#emit LOAD.S.pri  16
+	#emit STOR.I
+}
+
+static stock CopyArgumentToHeap(arg, bool:pack = false, const argptr[] = "") {
+	new arg_address, address;
+	
+	#emit LOAD.S.pri  0
+	#emit ADD.C       12
+	#emit LOAD.S.alt  arg
+	#emit SHL.C.alt   2
+	#emit ADD
+	#emit LOAD.I
+	#emit STOR.S.pri  arg_address
+	#emit STOR.S.pri  argptr
+	
+	if (pack) {
+		new bytes = ((strlen(argptr) + 1 + 3) / 4) * 4;
+		
+		#emit LCTRL       2
+		#emit STOR.S.pri  address
+		#emit LOAD.S.alt  bytes
+		#emit ADD
+		#emit SCTRL       2
+		
+		//strpack(dest[], const source[], maxlength = sizeof dest)
+		#emit LOAD.S.pri  bytes
+		#emit SHR.C.pri   2
+		#emit PUSH.pri
+		
+		#emit PUSH.S      arg_address
+		#emit PUSH.S      address
+		
+		#emit PUSH.C      12
+		
+		#emit SYSREQ.C    strpack
+		#emit STACK       16
+	} else {
+		new bytes = (strlen(argptr) + 1) * 4;
+		
+		#emit LCTRL       2
+		#emit STOR.S.pri  address
+		#emit LOAD.S.alt  bytes
+		#emit ADD
+		#emit SCTRL       2
+		
+		//strunpack(dest[], const source[], maxlength = sizeof dest)
+		#emit LOAD.S.pri  bytes
+		#emit SHR.C.pri   2
+		#emit PUSH.pri
+		
+		#emit PUSH.S      arg_address
+		#emit PUSH.S      address
+		
+		#emit PUSH.C      12
+		
+		#emit SYSREQ.C    strunpack
+		#emit STACK       16
+	}
+	
+	#emit LOAD.S.pri  0
+	#emit ADD.C       12
+	#emit LOAD.S.alt  arg
+	#emit SHL.C.alt   2
+	#emit ADD
+	#emit MOVE.alt
+	#emit LOAD.S.pri  address
+	#emit STOR.I
+	
+	return address;
+}
+
+static stock RestoreHeapToAddress(address) {
+	#emit LOAD.S.pri  address
+	#emit SCTRL       2
+}
+
+static stock IsOverlapping(const str1[], size1 = sizeof(str1), const str2[], size2 = sizeof(str2)) {
+	new addr1, addr2;
+	
+	if (size1 == -1) {
+		size1 = strsize(str1);
+	} else {
+		size1 *= 4;
+	}
+	
+	if (size2 == -1) {
+		size2 = strsize(str2);
+	} else {
+		size2 *= 4;
+	}
+	
+	#emit LOAD.S.pri  str1
+	#emit STOR.S.pri  addr1
+	#emit LOAD.S.pri  str2
+	#emit STOR.S.pri  addr2
+
+	if (addr2 <= addr1 < addr2 + size2)
+		return true;
+	else if (addr1 <= addr2 < addr1 + size1)
+		return true;
+	else
+		return false;
+}
+
+// strlib functions
 #define sprintf(%1) \
 	(format(g_StrlibBuffer, sizeof(g_StrlibBuffer), %1), g_StrlibBuffer)
 
@@ -272,6 +399,15 @@ stock strgetc(const string[], index) {
 		return '\0';
 	
 	return ispacked(string) ? string{index} : string[index];
+}
+
+stock strsize(const string[]) {
+	new len = strlen(string);
+	
+	if (ispacked(string))
+		return len + 1;
+	
+	return (len + 1) * 4;
 }
 
 stock bool:isempty(const string[]) {
@@ -572,23 +708,26 @@ stock strcount(const string[], const sub[], bool:ignorecase = false) {
 
 stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(output)) {
 	new
-		bool:packed = (input[0] > 255),
 		     length = strlen(input),
 			 c,
-			 outlen = 0
+			 outlen = 0,
+		     heap = 0
 	;
-
-	output[0] = '\0';
 
 	// No need to do anything else.
 	if (!length)
 		return true;
 	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1);
+	
+	output[0] = '\0';
+	
 	if (input[0] == '"')
 		pos++;
 
 	for (;; pos++) {
-		if (outlen >= maxlength - 1)
+		if (outlen >= maxlength - 1 || pos >= length)
 			break;
 		
 		c = input[pos];
@@ -606,7 +745,7 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 
 		// String ends with a backslash - invalid.
 		if (pos == length - 1)
-			return false;
+			goto return_false;
 
 		// We're after a backslash now, let's see what's there.
 		c = input[++pos];
@@ -630,7 +769,7 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 
 				// String ends with "\x" - invalid.
 				if (c == length - 1)
-					return false;
+					goto return_false;
 
 				while ((c = input[pos + 1])) {
 					if ('a' <= c <= 'f' || 'A' <= c <= 'F') {
@@ -667,8 +806,9 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 
 				output[outlen++] = val;
 			}
+			
 			default: {
-				return false;
+				goto return_false;
 			}
 		}
 	}
@@ -676,13 +816,26 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 	output[outlen] = '\0';
 	
 	pos++;
+	
+	new bool:ret = true;
+	
+	goto return_true;
+return_false:
+	ret = false;
+return_true:
 
-	return true;
+	if (heap)
+		RestoreHeapToAddress(heap);
+
+	return ret;
 }
 
 stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
-	new i, c, outlen;
-
+	new i, c, outlen, heap = 0;
+	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1);
+	
 	output[outlen++] = '"';
 
 	for (i = 0; (c = input[i]); i++) {
@@ -696,15 +849,15 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 			case ' ', '!', '#' .. '[', ']', '^' .. '~':
 				output[outlen++] = c;
 
-			case  '"': strcat(output, !"\\\"", outlen + 3), outlen += 2;
-			case '\a': strcat(output, !"\\a" , outlen + 3), outlen += 2;
-			case '\b': strcat(output, !"\\b" , outlen + 3), outlen += 2;
-			case '\e': strcat(output, !"\\e" , outlen + 3), outlen += 2;
-			case '\f': strcat(output, !"\\f" , outlen + 3), outlen += 2;
-			case '\r': strcat(output, !"\\r" , outlen + 3), outlen += 2;
-			case '\n': strcat(output, !"\\n" , outlen + 3), outlen += 2;
-			case '\t': strcat(output, !"\\t" , outlen + 3), outlen += 2;
-			case '\v': strcat(output, !"\\v" , outlen + 3), outlen += 2;
+			case  '"': strunpack(output[outlen], !"\\\"", 3), outlen += 2;
+			case '\a': strunpack(output[outlen], !"\\a" , 3), outlen += 2;
+			case '\b': strunpack(output[outlen], !"\\b" , 3), outlen += 2;
+			case '\e': strunpack(output[outlen], !"\\e" , 3), outlen += 2;
+			case '\f': strunpack(output[outlen], !"\\f" , 3), outlen += 2;
+			case '\r': strunpack(output[outlen], !"\\r" , 3), outlen += 2;
+			case '\n': strunpack(output[outlen], !"\\n" , 3), outlen += 2;
+			case '\t': strunpack(output[outlen], !"\\t" , 3), outlen += 2;
+			case '\v': strunpack(output[outlen], !"\\v" , 3), outlen += 2;
 
 			default: {
 				if (maxlength - outlen <= 8)
@@ -719,11 +872,17 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 
 	output[outlen++] = '"';
 	output[outlen] = '\0';
+	
+	if (heap)
+		RestoreHeapToAddress(heap);
 }
 
 stock strfrombin(output[], const input[], inputlength = sizeof(input), maxlength = sizeof(output)) {
 	static const hex_chars[] = "0123456789ABCDEF";
-	new outlen = 0;
+	new outlen = 0, heap = 0;
+	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1);
 	
 	for (new i = 0; i < inputlength; i++) {
 		if (maxlength - outlen <= 7) {
@@ -745,10 +904,16 @@ stock strfrombin(output[], const input[], inputlength = sizeof(input), maxlength
 	}
 	
 	output[outlen] = '\0';
+	
+	if (heap)
+		RestoreHeapToAddress(heap);
 }
 
 stock strtobin(output[], const input[], maxlength = sizeof(output)) {
-	new len = strlen(input), outlen = 0;
+	new len = strlen(input), outlen = 0, heap = 0;
+	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1);
 	
 	for (new i = 0; i < len;) {
 		if (outlen >= maxlength || i > len - 8) {
@@ -774,6 +939,9 @@ stock strtobin(output[], const input[], maxlength = sizeof(output)) {
 		output[outlen++] = out;
 	}
 	
+	if (heap)
+		RestoreHeapToAddress(heap);
+	
 	return outlen;
 }
 
@@ -783,8 +951,12 @@ stock strurlencode(output[], const input[], maxlength = sizeof(output), bool:pac
 	new
 		     len = strlen(input),
 		bool:packed = ispacked(input),
-		     outlen = 0
+		     outlen = 0,
+		     heap = 0
 	;
+	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1, packed);
 	
 	if (pack)
 		maxlength *= 4;
@@ -831,10 +1003,16 @@ stock strurlencode(output[], const input[], maxlength = sizeof(output), bool:pac
 		output{outlen} = '\0';
 	else
 		output[outlen] = '\0';
+	
+	if (heap)
+		RestoreHeapToAddress(heap);
 }
 
 stock strurldecode(output[], const input[], maxlength = sizeof(output)) {
-	new prev_pos = 0, pos = 0, inputlen = strlen(input), len;
+	new prev_pos = 0, pos = 0, inputlen = strlen(input), len, heap = 0;
+	
+	if (IsOverlapping(output, maxlength, input, -1))
+		heap = CopyArgumentToHeap(1);
 	
 	output[0] = '\0';
 	
@@ -850,7 +1028,7 @@ stock strurldecode(output[], const input[], maxlength = sizeof(output)) {
 		}
 		
 		if (inputlen < pos + 3)
-			return;
+			goto func_end;
 		
 		str[0] = 0;
 		
@@ -866,9 +1044,18 @@ stock strurldecode(output[], const input[], maxlength = sizeof(output)) {
 	
 	strcatmid(output, input, prev_pos, _, maxlength);
 	strreplace(output, "+", " ", _, len, _, maxlength);
+
+func_end:
+	if (heap)
+		RestoreHeapToAddress(heap);
 }
 
 stock strcatmid(dest[], const source[], start = 0, end = -1, maxlength = sizeof(dest)) {
+	new heap = 0;
+	
+	if (IsOverlapping(dest, maxlength, source, -1))
+		heap = CopyArgumentToHeap(1);
+	
 	if (start == 0 && end == -1) {
 		strcat(dest, source, maxlength);
 	} else {
@@ -897,4 +1084,7 @@ stock strcatmid(dest[], const source[], start = 0, end = -1, maxlength = sizeof(
 			}
 		}
 	}
+	
+	if (heap)
+		RestoreHeapToAddress(heap);
 }
