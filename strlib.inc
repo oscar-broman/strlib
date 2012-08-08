@@ -8,6 +8,18 @@
 	#define STRLIB_RETURN_SIZE  128
 #endif
 
+#if !defined STRLIB_USE_FORMATEX
+	#if defined __fmt_funcinc
+		#if !defined FormatSpecifier
+			#error Please include formatex before strlib.
+		#endif
+	
+		#define STRLIB_USE_FORMATEX  true
+	#else
+		#define STRLIB_USE_FORMATEX  false
+	#endif
+#endif
+
 // Used in strtrim (deprecated)
 enum trim_edges {
 	trim_left  = 1,
@@ -26,16 +38,13 @@ enum string_edges {
  * Returns a formatted string.
  *
  * Parameters:
- *   format[] - The format string.
+ *   fmat[] - The format string.
  *   ... - The format variables.
  *
  * Returns:
  *   The formatted string.
- *
- * Limitations:
- *   Can only be used once in the same function call.
  */
-forward sprintf(const format[], {Float, _}:...);
+forward sprintf(const fmat[], {Float, _}:...);
 
 /*
  * Get the first character of a string
@@ -322,6 +331,7 @@ forward _strlib_funcinc();
 public _strlib_funcinc() {
 	new temp[1];
 	
+	format(!"", 0, !"");
 	strcat(temp, temp);
 	strpack(temp, temp);
 	strunpack(temp, temp);
@@ -441,9 +451,6 @@ static stock IsOverlapping(const str1[], size1 = sizeof(str1), const str2[], siz
 }
 
 // strlib functions
-#define sprintf(%1) \
-	(format(g_StrlibBuffer, sizeof(g_StrlibBuffer), %1), g_StrlibBuffer)
-
 #define ispacked(%1) \
 	((%1)[0] > 255)
 
@@ -1451,4 +1458,84 @@ stock ret_GetPlayerName(playerid, bool:pack = false) {
 		strpack(output, output);
 	
 	return output;
+}
+
+stock sprintf(const fmat[], {Float, _}:...) {
+	static output[STRLIB_RETURN_SIZE], frm_header[3], heap;
+	
+	const output_size = sizeof(output);
+	
+	if (ispacked(fmat)) {
+		heap = CopyArgumentToHeap(0);
+	} else {
+		heap = 0;
+	}{}
+	
+	// Store current frame header
+	#emit LCTRL      5
+	#emit CONST.alt  frm_header
+	#emit MOVS       12
+	
+	// Change the stack pointer to FRM + 12
+	#emit ADD.C    12 // pri is FRM (see above)
+	#emit SCTRL    4
+	
+	// Push sizeof(output)
+	#emit PUSH.C      output_size
+	
+	// Push output
+	#emit PUSH.C      output
+	
+	// Push the argument count
+	#emit LOAD.S.pri  8
+	#emit ADD.C       8
+	#emit PUSH.pri
+	
+	#if !STRLIB_USE_FORMATEX
+		const formatex = 0; // Dummy used to avoid "unknown symbol" error
+		
+		goto do_sysreq;
+	#endif
+
+	// Call formatex (unless this was skipped above)
+	#emit LCTRL       6
+	#emit ADD.C       36
+	#emit PUSH.pri
+	#emit CONST.pri   formatex
+	#emit SCTRL       6
+	
+	#if !STRLIB_USE_FORMATEX
+		do_sysreq:
+	#endif
+	
+	// Call format (unless formatex was called, in which case this is skipped)
+	#emit SYSREQ.C    format
+	
+	// Restore the stack pointer to FRM
+	#emit LCTRL       5
+	#emit SCTRL       4
+	
+	// Copy back the frame header
+	#emit MOVE.alt
+	#emit CONST.pri   frm_header
+	#emit MOVS        12
+	
+	// Restore heap if needed
+	if (heap) {
+		RestoreHeapToAddress(heap);
+	}{}
+	
+	// IMPORTANT: Fix compiler bug (returning strings in variadic functions)
+	#emit LOAD.S.pri  8
+	#emit ADD.C       12
+	#emit MOVE.alt
+	#emit LCTRL       5
+	#emit ADD
+	#emit LOAD.I
+	#emit STOR.S.pri  20 // 16 + (static_args * 4)
+	
+	return output;
+	
+	// It is actually used, just not by its symbol name
+	#pragma unused fmat
 }
