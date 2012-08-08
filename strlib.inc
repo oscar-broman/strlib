@@ -8,11 +8,18 @@
 	#define STRLIB_RETURN_SIZE  128
 #endif
 
-// Used in strtrim
+// Used in strtrim (deprecated)
 enum trim_edges {
 	trim_left  = 1,
 	trim_right = 2,
 	trim_both = trim_left | trim_right
+};
+
+// Used in strtrim and strpad
+enum string_edges {
+	edge_left  = 1,
+	edge_right = 2,
+	edge_both = edge_left | edge_right
 };
 
 /*
@@ -143,12 +150,38 @@ forward strreplace(string[], const search[], const replacement[], bool:ignorecas
  * Parameters:
  *   string[] - The string to trim.
  *   chars[] - A string with characters to trim, or all whitespace if empty. Default is all whitespace.
- *   trim_edges - Which edge to trim (trim_left/trim_right/trim_both). Default is trim_both.
+ *   edge - The edge(s) to trim (edge_left/edge_right/edge_both). Default is edge_both.
  *
  * Returns:
  *   Nothing
  */
-forward strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both);
+forward strtrim(string[], const chars[] = !"", string_edges:edge = edge_both);
+
+/*
+ * Pad edge(s) of a string with spaces.
+ *
+ * Parameters:
+ *   string[] - The string to pad.
+ *   length - The new length of the string.
+ *   substr[] - The substring to pad with. Defaults to a space (" ").
+ *   edge - The edge(s) to pad (edge_left/edge_right/edge_both). Default is edge_both.
+ *   trim_first - Whether to trim the string before padding.
+ *   trim_chars[] - The chars to trim, defaults is all whitespace.
+ *   maxlength - The size of "string". Defaults to sizeof(string).
+ *   input - Used internally.
+ */
+forward strpad(string[], length, const substr[] = !" ", string_edges:edge = edge_both, bool:trim_first = true, const trim_chars[] = !"", maxlength = sizeof(string), const input[] = !"");
+
+/*
+ * Wrap a string inside two other strings.
+ *
+ * Parameters:
+ *   left[] - The string on the left side.
+ *   string[] - The middle string that will be modified.
+ *   right[] - The string on the right side.
+ *   maxlength - The size of "string". Defaults to sizeof(string).
+ */
+forward strwrap(const left[], string[], const right[], maxlength = sizeof(string));
 
 /*
  * Count substrings.
@@ -261,7 +294,9 @@ forward ret_strimplode(const glue[], ...);
 forward ret_strreplace(const string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1);
 forward ret_strfromliteral(const input[], &pos = 0);
 forward ret_strtoliteral(const input[]);
-forward ret_strtrim(const string[], const chars[] = !"", trim_edges:edges = trim_both);
+forward ret_strtrim(const string[], const chars[] = !"", string_edges:edge = edge_both);
+forward ret_strpad(const string[], length, const substr[] = !" ", string_edges:edge = edge_both, bool:trim_first = true, const trim_chars[] = !"");
+forward ret_strwrap(const left[], const string[], const right[]);
 forward ret_strurldecode(const input[]);
 forward ret_strurlencode(const input[], bool:pack = false);
 
@@ -632,13 +667,13 @@ stock strreplace(string[], const search[], const replacement[], bool:ignorecase 
     return count;
 }
 
-stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
+stock strtrim(string[], const chars[] = !"", string_edges:edge = edge_both) {
 	new bool:packed = ispacked(string);
 	
 	// If "chars" is empty, trim whitespace
 	if (!strgetfirstc(chars)) {
 		// Should the left side be trimmed?
-		if (edges & trim_left) {
+		if (edge & edge_left) {
 			new i = 0;
 			
 			if (packed)
@@ -652,7 +687,7 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 		}
 		
 		// Should the right side be trimmed?
-		if (edges & trim_right) {
+		if (edge & edge_right) {
 			new i = strlen(string);
 			
 			if (i) {
@@ -669,7 +704,7 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 		}
 	} else {
 		// Should the left side be trimmed?
-		if (edges & trim_left) {
+		if (edge & edge_left) {
 			new i = 0, sub[2];
 			
 			if (packed) {
@@ -696,7 +731,7 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 		}
 		
 		// Should the right side be trimmed?
-		if (edges & trim_right) {
+		if (edge & edge_right) {
 			new i = strlen(string), sub[2];
 			
 			if (i >= 0) {
@@ -722,6 +757,87 @@ stock strtrim(string[], const chars[] = !"", trim_edges:edges = trim_both) {
 			}
 		}
 	}
+}
+
+stock strpad(string[], length, const substr[] = !" ", string_edges:edge = edge_both, bool:trim_first = true, const trim_chars[] = !"", maxlength = sizeof(string), const input[] = !"") {
+	if (trim_first) {
+		strtrim(string, trim_chars, edge);
+	}
+	
+	new
+		     heap,
+		     length_left = 0,
+		     length_right = 0,
+		     len = strlen(string),
+		     sublen = strlen(substr),
+		bool:packed,
+		bool:subpacked = ispacked(substr)
+	;
+	
+	if (len > length)
+		return;
+	else
+		length -= len;
+	
+	// Make "input" a pointer to "string"
+	#emit LOAD.S.pri  string
+	#emit STOR.S.pri  input
+	
+	// Copy "input" to the heap so it won't be linked to "string" anymore.
+	heap = CopyArgumentToHeap(7);
+	
+	string[0] = '\0';
+	len = 0;
+	
+	switch (edge) {
+		case edge_left:
+			length_left = length;
+		case edge_right:
+			length_right = length;
+		default:
+			length_left = length / 2, length_right = length - length_left;
+	}
+	
+	if (length_left) {
+		while (len < length_left) {
+			if (subpacked)
+				strcat(string, substr, length_left * 4);
+			else
+				strcat(string, substr, length_left + 1);
+		
+			len += sublen;
+		}
+	
+		if (subpacked)
+			string{length_left} = 0;
+	}
+	
+	strcat(string, input, maxlength);
+	
+	if (length_right) {
+		len = strlen(string);
+		length_right += len;
+		packed = ispacked(string);
+		
+		while (len < length_right) {
+			if (packed)
+				strcat(string, substr, length_right / 4 + 1);
+			else
+				strcat(string, substr, length_right + 1);
+		
+			len += sublen;
+		}
+		
+		if (packed)
+			string{length_right + 1} = 0;
+	}
+	
+	RestoreHeapToAddress(heap);
+}
+
+stock strwrap(const left[], string[], const right[], maxlength = sizeof(string)) {
+	strins(string, left, 0, maxlength);
+	strcat(string, right, maxlength);
 }
 
 stock strcount(const string[], const sub[], bool:ignorecase = false) {
@@ -1214,12 +1330,32 @@ stock ret_strtoliteral(const input[]) {
 	return output;
 }
 
-stock ret_strtrim(const string[], const chars[] = !"", trim_edges:edges = trim_both) {
+stock ret_strtrim(const string[], const chars[] = !"", string_edges:edge = edge_both) {
 	new output[STRLIB_RETURN_SIZE];
 	
 	strcat(output, string);
 	
-	strtrim(output, chars, edges);
+	strtrim(output, chars, edge);
+	
+	return output;
+}
+
+stock ret_strpad(const string[], length, const substr[] = !" ", string_edges:edge = edge_both, bool:trim_first = true, const trim_chars[] = !"") {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, string);
+	
+	strpad(output, length, substr, edge, trim_first, trim_chars);
+	
+	return output;
+}
+
+stock ret_strwrap(const left[], const string[], const right[]) {
+	new output[STRLIB_RETURN_SIZE];
+	
+	strcat(output, left);
+	strcat(output, string);
+	strcat(output, right);
 	
 	return output;
 }
