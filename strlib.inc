@@ -199,11 +199,12 @@ forward strwrap(const left[], string[], const right[], maxlength = sizeof(string
  *   string[] - The string to search inside.
  *   sub[] - The string to search for.
  *   ignorecase - Whether the search should be case-insensitive.
+ *   count_overlapped - Whether to count overlapping strings ("abcabc" in "abcabcabc" will count 2 instead of 1).
  *
  * Returns:
  *   The number of occurrences of "sub" in "string".
  */
-forward strcount(const string[], const sub[], bool:ignorecase = false);
+forward strcount(const string[], const sub[], bool:ignorecase = false, bool:count_overlapped = false);
 
 /*
  * Read a string from a PAWN string literal.
@@ -847,10 +848,15 @@ stock strwrap(const left[], string[], const right[], maxlength = sizeof(string))
 	strcat(string, right, maxlength);
 }
 
-stock strcount(const string[], const sub[], bool:ignorecase = false) {
-	new pos = 0, count = 0;
+stock strcount(const string[], const sub[], bool:ignorecase = false, bool:count_overlapped = false) {
+	new
+		increment = count_overlapped ? 1 : strlen(sub),
+		pos = -increment,
+		count = 0
+	;
 	
-	while (-1 != (pos = strfind(string, sub, ignorecase, pos)))
+	
+	while (-1 != (pos = strfind(string, sub, ignorecase, pos + increment)))
 		count++;
 	
 	return count;
