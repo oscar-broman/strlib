@@ -1014,6 +1014,7 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 			case '\n': strunpack(output[outlen], !"\\n" , 3), outlen += 2;
 			case '\t': strunpack(output[outlen], !"\\t" , 3), outlen += 2;
 			case '\v': strunpack(output[outlen], !"\\v" , 3), outlen += 2;
+			case '\\': strunpack(output[outlen], !"\\\\" , 3), outlen += 2;
 
 			default: {
 				if (maxlength - outlen <= 8)
