@@ -231,7 +231,7 @@ forward bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeo
  * Returns:
  *   Nothing
  */
-forward strtoliteral(output[], const input[], maxlength = sizeof(output));
+forward strtoliteral(output[], const input[], maxlength = sizeof(output), bool:paranoid = true);
 
 /*
  * Convert an array to a string.
@@ -303,7 +303,7 @@ forward ret_strfrombin(const input[], inputlength = sizeof(input));
 forward ret_strimplode(const glue[], ...);
 forward ret_strreplace(const string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1);
 forward ret_strfromliteral(const input[], &pos = 0);
-forward ret_strtoliteral(const input[]);
+forward ret_strtoliteral(const input[], bool:paranoid = true);
 forward ret_strtrim(const string[], const chars[] = !"", string_edges:edge = edge_both);
 forward ret_strpad(const string[], length, const substr[] = !" ", string_edges:edge = edge_both, bool:trim_first = true, const trim_chars[] = !"");
 forward ret_strwrap(const left[], const string[], const right[]);
@@ -986,7 +986,7 @@ return_true:
 	return ret;
 }
 
-stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
+stock strtoliteral(output[], const input[], maxlength = sizeof(output), bool:paranoid = true) {
 	new i, c, outlen, heap = 0;
 	
 	if (IsOverlapping(output, maxlength, input, -1))
@@ -1015,8 +1015,13 @@ stock strtoliteral(output[], const input[], maxlength = sizeof(output)) {
 			case '\t': strunpack(output[outlen], !"\\t" , 3), outlen += 2;
 			case '\v': strunpack(output[outlen], !"\\v" , 3), outlen += 2;
 			case '\\': strunpack(output[outlen], !"\\\\" , 3), outlen += 2;
-
+			
 			default: {
+				if (!paranoid && 0x80 <= c <= 0xFF) {
+					output[outlen++] = c;
+					continue;
+				}
+				
 				if (maxlength - outlen <= 8)
 					break;
 				
@@ -1334,12 +1339,12 @@ stock ret_strfromliteral(const input[], &pos = 0) {
 	return output;
 }
 
-stock ret_strtoliteral(const input[]) {
+stock ret_strtoliteral(const input[], bool:paranoid = true) {
 	new output[STRLIB_RETURN_SIZE];
 	
 	strcat(output, input);
 	
-	strtoliteral(output, input);
+	strtoliteral(output, input, paranoid);
 	
 	return output;
 }
