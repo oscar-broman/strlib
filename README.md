@@ -1,6 +1,6 @@
 # strlib
 
-String functions for SA-MP PAWN scripting.
+String functions for SA-MP Pawn scripting.
 
 # Functions
 
@@ -20,14 +20,22 @@ String functions for SA-MP PAWN scripting.
 * `strcatmid` - Concatenate a part of another string.
 * `strurlencode` - URL encode a string.
 * `strurldecode` - Decode an encoded URL.
+* `strpad` - Pad edge(s) of a string with spaces.
+* `strwrap` - Wrap a string inside two other strings.
+* `utf8encode` - Encode a string into UTF-8 (assuming it's ISO-8859-1).
+* `utf8decode` - Decode a UTF-8 encoded string.
 
 ## Output as return value
 
 All of the functions above require one argument to be the output variable - the functions listed below do not.
 
-Note, however, the max size of returned strings is `STRLIB_RETURN_SIZE` (default 256). Using large sizes will add lots of heap usage.
+Note, however, the max size of returned strings is `STRLIB_RETURN_SIZE` (default 128). Using large sizes will add lots of heap usage.
 
-* `sprintf` - Returns a formatted string.
+* `sprintf(format[], ...)` - Same as the native `format`, but it returns the output.
+* `ret_utf8encode(input[])`
+* `ret_utf8decode(input[])`
+* `ret_strpad(string[], length, substr[] = !" ", edge = edge_both, trim_first = true, trim_chars[] = "")`
+* `ret_strwrap(left[], string[], right[])`
 * `ret_strcatmid(string[], source[], start = 0, end = -1)`
 * `ret_strfrombin(input[], inputlength = sizeof(input))`
 * `ret_strimplode(glue[], ...)`
