@@ -467,12 +467,7 @@ static stock IsOverlapping(const str1[], size1 = sizeof(str1), const str2[], siz
 	#emit LOAD.S.pri  str2
 	#emit STOR.S.pri  addr2
 
-	if (addr2 <= addr1 < addr2 + size2)
-		return true;
-	else if (addr1 <= addr2 < addr1 + size1)
-		return true;
-	else
-		return false;
+	return (addr1 < addr2 + size2) && (addr2 < addr1 + size1);
 }
 
 // strlib functions
