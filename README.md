@@ -4,7 +4,6 @@ String functions for SA-MP PAWN scripting.
 
 # Functions
 
-* `sprintf` - Returns a formatted string.
 * `strgetfirstc` - Get the first character of a string
 * `strgetc` - Get a character from a specific index in a string.
 * `isempty` - Find out if a string is empty.
@@ -24,10 +23,11 @@ String functions for SA-MP PAWN scripting.
 
 ## Output as return value
 
-All of the functions above require one argument to be the output variable - the functions listed below does not.
+All of the functions above require one argument to be the output variable - the functions listed below do not.
 
 Note, however, the max size of returned strings is `STRLIB_RETURN_SIZE` (default 256). Using large sizes will add lots of heap usage.
 
+* `sprintf` - Returns a formatted string.
 * `ret_strcatmid(string[], source[], start = 0, end = -1)`
 * `ret_strfrombin(input[], inputlength = sizeof(input))`
 * `ret_strimplode(glue[], ...)`
