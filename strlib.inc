@@ -1,3 +1,8 @@
+#if defined _inc_strlib
+	#endinput
+#endif
+#define _inc_strlib
+
 #include <a_samp>
 
 #if !defined STRLIB_BUFFER_SIZE
