@@ -1,7 +1,7 @@
-#if defined _inc_strlib
+#if defined STRLIB_INC
 	#endinput
 #endif
-#define _inc_strlib
+#define STRLIB_INC
 
 #include <a_samp>
 
