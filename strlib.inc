@@ -1356,19 +1356,19 @@ stock utf8decode(dest[], const source[], maxlength = sizeof(dest)) {
 		if (c & 0b10000000) {
 			if (c & 0b11100000 == 0b11000000) {
 				// 2 byte
-				if (i + 3 >= len) continue;
+				if (i + 2 >= len) continue;
 				
 				dest[idx++] = (c & 0b00011111) << 6 | (source[++i] & 0b00111111);
 			} else if (c & 0b11110000 == 0b11100000) {
 				// 3 byte
-				if (i + 4 >= len) continue;
+				if (i + 3 >= len) continue;
 				
 				dest[idx++] = (c & 0b00001111) << 12 |
 				              (source[++i] & 0b00111111) << 6 |
 				              (source[++i] & 0b00111111);
 			} else if (c & 0b11111000 == 0b11110000) {
 				// 4 byte
-				if (i + 5 >= len) continue;
+				if (i + 4 >= len) continue;
 				
 				dest[idx++] = (c & 0b00000111) << 18 |
 				              (source[++i] & 0b00111111) << 12 |
@@ -1376,7 +1376,7 @@ stock utf8decode(dest[], const source[], maxlength = sizeof(dest)) {
 				              (source[++i] & 0b00111111);
 			} else if (c & 0b11111100 == 0b11111000) {
 				// 5 byte
-				if (i + 6 >= len) continue;
+				if (i + 5 >= len) continue;
 				
 				dest[idx++] = (c & 0b00000011) << 24 |
 				              (source[++i] & 0b00111111) << 18 |
@@ -1385,7 +1385,7 @@ stock utf8decode(dest[], const source[], maxlength = sizeof(dest)) {
 				              (source[++i] & 0b00111111);
 			} else if (c & 0b11111110 == 0b11111100) {
 				// 6 byte
-				if (i + 7 >= len) continue;
+				if (i + 6 >= len) continue;
 				
 				dest[idx++] = (c & 0b00000001) << 30 |
 				              (source[++i] & 0b00111111) << 24 |
