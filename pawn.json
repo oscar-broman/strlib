@@ -1,0 +1,5 @@
+{
+    "user": "oscar-broman",
+    "repo": "strlib",
+    "dependencies": ["sampctl/samp-stdlib"]
+}
