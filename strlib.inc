@@ -121,7 +121,7 @@ forward bool:isequal(const str1[], const str2[], bool:ignorecase = false);
  *   Number of changes between the two strings.
  *   This includes insertions, removals, and added characters (in that order I believe).
  */
-forward bool:strdistance(const str1[], const str2[], bool:ignorecase = false);
+forward strdistance(const str1[], const str2[], bool:ignorecase = false);
 
 /*
  * Split a string by a given delimiter.
