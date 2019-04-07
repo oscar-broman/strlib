@@ -110,6 +110,20 @@ forward bool:isempty(const string[]);
 forward bool:isequal(const str1[], const str2[], bool:ignorecase = false);
 
 /*
+ * Compare two strings, return Levenshtein distance between the two
+ *
+ * Parameters:
+ *   str1[] - The first string.
+ *   str2[] - The second string.
+ *   ignorecase - Whether to compare them in a case-insensitive manner.
+ *
+ * Returns:
+ *   Number of changes between the two strings.
+ * 	 This includes insertions, removals, and added characters (in that order I believe).
+ */
+forward bool:strdistance(const str1[], const str2[], bool:ignorecase = false);
+
+/*
  * Split a string by a given delimiter.
  * 
  * Parameters:
@@ -521,6 +535,68 @@ stock bool:isequal(const str1[], const str2[], bool:ignorecase = false) {
         return false;
 
     return !strcmp(str1, str2, ignorecase);
+}
+
+stock strdistance(const str1[], const str2[], bool:ignorecase = false) {
+	// If they are equal
+	if(isequal(str1, str2, ignorecase))
+		return 0;
+
+	// Data
+	static d[128][128];
+
+	// is packed?
+	new bool:pack1 = ispacked(str1),
+		bool:pack2 = ispacked(str2);
+	
+	// String sizes
+    new size1 = strlen(str1),
+        size2 = strlen(str2);
+    
+	// Zero-length Strings
+    if (size1 == 0)
+        return size2;
+
+    if (size2 == 0)
+        return size1;
+
+	// Intitalize data array
+    for (new i; i <= size1; i++)
+        d[i][0] = i;
+    
+    for (new j; j <= size2; j++)
+        d[0][j] = j;
+
+	// Loop through both strings, comparing each character to each character in the other string (think matrix)
+    for (new j = 1; j <= size2; j++) {
+        for (new i = 1; i <= size1; i++) {
+			new char1 = pack1 ? str1{i - 1} : str1[i - 1],
+				char2 = pack2 ? str2{j - 1} : str2[j - 1];
+		
+            // If ignorecase, make chars lower case.
+            if(ignorecase) {
+                if (65 <= char1 <= 90)
+                    char1 += 32;
+                
+                if (65 <= char2 <= 90)
+                    char2 += 32;
+            }
+            
+			// Magic math that I can't explain, credit to Levenshtein
+            if (char1 == char2)
+                d[i][j] = d[i - 1][j - 1];
+            else {
+                new l1 = d[i - 1][j] + 1,
+                    l2 = d[i][j - 1] + 1,
+                    l3 = d[i - 1][j - 1] + 1;
+                
+                l2 = (l1 > l2 ? l2 : l1);
+                d[i][j] = (l3 > l2 ? l2 : l3);
+            }
+        }
+    }
+    
+    return d[size1][size2];
 }
 
 stock strimplode(const glue[], output[], maxlength = sizeof(output), ...) {
