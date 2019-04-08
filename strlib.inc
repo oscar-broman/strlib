@@ -538,22 +538,19 @@ stock bool:isequal(const str1[], const str2[], bool:ignorecase = false) {
 }
 
 stock strdistance(const str1[], const str2[], bool:ignorecase = false) {
-	// If they are equal
+	// If they are equal, theres no distance anyways
 	if(isequal(str1, str2, ignorecase))
 		return 0;
 
-	// Data
-	static d[128][128];
+	static data[128][128];
 
-	// is packed?
 	new bool:pack1 = ispacked(str1),
 		bool:pack2 = ispacked(str2);
 
-	// String sizes
 	new size1 = strlen(str1),
 		size2 = strlen(str2);
 
-	// Zero-length Strings
+	// Zero-length strings would return the size of the other string, because it's that many insertions
 	if (size1 == 0)
 		return size2;
 
@@ -562,10 +559,10 @@ stock strdistance(const str1[], const str2[], bool:ignorecase = false) {
 
 	// Intitalize data array
 	for (new i; i <= size1; i++)
-		d[i][0] = i;
+		data[i][0] = i;
 
 	for (new j; j <= size2; j++)
-		d[0][j] = j;
+		data[0][j] = j;
 
 	// Loop through both strings, comparing each character to each character in the other string (think matrix)
 	for (new j = 1; j <= size2; j++) {
@@ -582,21 +579,20 @@ stock strdistance(const str1[], const str2[], bool:ignorecase = false) {
 					char2 += 32;
 			}
 
-			// Magic math that I can't explain, credit to Levenshtein
 			if (char1 == char2)
-				d[i][j] = d[i - 1][j - 1];
+				data[i][j] = data[i - 1][j - 1];
 			else {
-				new l1 = d[i - 1][j] + 1,
-				l2 = d[i][j - 1] + 1,
-				l3 = d[i - 1][j - 1] + 1;
+				new l1 = data[i - 1][j] + 1,
+				l2 = data[i][j - 1] + 1,
+				l3 = data[i - 1][j - 1] + 1;
 
 				l2 = (l1 > l2 ? l2 : l1);
-				d[i][j] = (l3 > l2 ? l2 : l3);
+				data[i][j] = (l3 > l2 ? l2 : l3);
 			}
 		}
 	}
 
-	return d[size1][size2];
+	return data[size1][size2];
 }
 
 stock strimplode(const glue[], output[], maxlength = sizeof(output), ...) {
