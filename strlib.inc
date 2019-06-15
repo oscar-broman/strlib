@@ -375,7 +375,7 @@ forward _strlib_funcinc();
 public _strlib_funcinc() {
 	new temp[1];
 	
-	format(!"", 0, !"");
+	format(!temp, 0, !temp);
 	strcat(temp, temp);
 	strpack(temp, temp);
 	strunpack(temp, temp);
