@@ -490,8 +490,10 @@ static stock IsOverlapping(const str1[], size1 = sizeof(str1), const str2[], siz
 }
 
 // strlib functions
-#define ispacked(%1) \
-	((%1)[0] > 255)
+#if !defined ispacked
+    #define ispacked(%1) \
+        ((%1)[0] > 255)
+#endif
 
 stock strgetfirstc(const string[]) {
 	return ispacked(string) ? string{0} : string[0];
