@@ -1228,7 +1228,7 @@ stock strurlencode(output[], const input[], maxlength = sizeof(output), bool:pac
 		new c = packed ? input{i} : input[i];
 		
 		switch (c) {
-			case '0' .. '9', 'A' .. 'Z', '_', 'a' .. 'z', '–Å', '—ë', '–ê' .. '–Ø', '–∞' .. '—è': {
+			case '0' .. '9', 'A' .. 'Z', '_', 'a' .. 'z', '®', '∏', '¿' .. 'ﬂ', '‡' .. 'ˇ': {
 				if (pack)
 					output{outlen++} = c;
 				else
