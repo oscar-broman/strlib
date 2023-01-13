@@ -1733,6 +1733,9 @@ stock sprintf(const fmat[], {Float, _}:...) {
 	#emit CONST.alt  frm_header
 	#emit MOVS       12
 	
+	// Remember the parameter count
+	#emit LOAD.S.alt  8
+
 	// Change the stack pointer to FRM + 12
 	#emit ADD.C    12 // pri is FRM (see above)
 	#emit SCTRL    4
@@ -1744,7 +1747,7 @@ stock sprintf(const fmat[], {Float, _}:...) {
 	#emit PUSH.C      output
 	
 	// Push the argument count
-	#emit LOAD.S.pri  8
+	#emit MOVE.pri
 	#emit ADD.C       8
 	#emit PUSH.pri
 	
