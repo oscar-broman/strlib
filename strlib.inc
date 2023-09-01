@@ -1071,12 +1071,12 @@ stock bool:strfromliteral(output[], const input[], &pos = 0, maxlength = sizeof(
 	
 	pos++;
 	
-	new bool:ret = true;
+	new bool:ret;
 	
 	goto return_true;
-return_false:
-	ret = false;
 return_true:
+	ret = true;
+return_false:
 
 	if (heap)
 		RestoreHeapToAddress(heap);
