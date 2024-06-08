@@ -63,6 +63,17 @@ forward sprintf(const fmat[], {Float, _}:...);
 forward strgetfirstc(const string[]);
 
 /*
+ * Get the last character of a string
+ *
+ * Parameters:
+ *   string[] - The string.
+ *
+ * Returns:
+ *   The first character of the string.
+ */
+forward strgetlastc(const string[]);
+
+/*
  * Get a character from a specific index in a string.
  *
  * Parameters:
@@ -171,6 +182,18 @@ forward strimplode(const glue[], output[], maxlength = sizeof(output), ...);
  *   The number of replacements that were made.
  */
 forward strreplace(string[], const search[], const replacement[], bool:ignorecase = false, pos = 0, limit = -1, maxlength = sizeof(string));
+
+/*
+ * Deletes a current string.
+ *
+ * Parameters:
+ *   string[] - The string to perform the delete.
+ *   todelte[] - The string find to delete
+ *
+ * Returns:
+ *    Nothing
+ */
+forward strdeltext(string[], todelete[]);
 
 /*
  * Trim whitespace or a specific group of characters from a string.
@@ -497,6 +520,11 @@ static stock IsOverlapping(const str1[], size1 = sizeof(str1), const str2[], siz
 
 stock strgetfirstc(const string[]) {
 	return ispacked(string) ? string{0} : string[0];
+}
+
+stock strgetlastc(const string[]) {
+	new len = strlen(string);
+	return ispacked(string) ? string{len-1} : string[len-1];
 }
 
 stock strgetc(const string[], index) {
@@ -1799,4 +1827,12 @@ stock sprintf(const fmat[], {Float, _}:...) {
 	
 	// It is actually used, just not by its symbol name
 	#pragma unused fmat
+}
+
+public strdeltext(string[], todelete[]) {
+	new len1 = strfind(string, todelete,true),
+		len2 = strlen(todelete);
+	while(len != -1) {
+		strdel(string, len1, len1+len2);
+	}
 }
