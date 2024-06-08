@@ -4,7 +4,8 @@ String functions for SA-MP Pawn scripting.
 
 # Functions
 
-* `strgetfirstc` - Get the first character of a string
+* `strgetfirstc` - Get the first character of a string.
+* `strgetlastc` - Get the last character of a string.
 * `strgetc` - Get a character from a specific index in a string.
 * `isempty` - Find out if a string is empty.
 * `isequal` - Compare two strings.
@@ -24,6 +25,7 @@ String functions for SA-MP Pawn scripting.
 * `strwrap` - Wrap a string inside two other strings.
 * `utf8encode` - Encode a string into UTF-8 (assuming it's ISO-8859-1).
 * `utf8decode` - Decode a UTF-8 encoded string.
+* `strdeltext` - Removes text from a string.
 
 ## Output as return value
 
