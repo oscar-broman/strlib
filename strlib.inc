@@ -1832,7 +1832,8 @@ stock sprintf(const fmat[], {Float, _}:...) {
 public strdeltext(string[], todelete[]) {
 	new len1 = strfind(string, todelete,true),
 		len2 = strlen(todelete);
-	while(len != -1) {
+	while(len1 != -1) {
 		strdel(string, len1, len1+len2);
+		break;
 	}
 }
