@@ -1405,7 +1405,7 @@ stock utf8encode(dest[], const source[], maxlength = sizeof(dest)) {
 		}
 	}
 	
-	dest[idx++] = '\0';
+	dest[idx] = '\0';
 	
 	if (heap) {
 		RestoreHeapToAddress(heap);
@@ -1474,7 +1474,7 @@ stock utf8decode(dest[], const source[], maxlength = sizeof(dest)) {
 		}
 	}
 	
-	dest[idx++] = 0;
+	dest[idx] = 0;
 	
 	if (heap) {
 		RestoreHeapToAddress(heap);
